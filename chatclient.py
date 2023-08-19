@@ -18,39 +18,43 @@ class RecvHandler(threading.Thread):
             conn.send(pickle.dumps("ACK"))
             conn.close()
 
-try:
-    me = str(sys.argv[1])
-except:
-    print('Usage: python3 chatclient.py <Username>')
-    sys.exit(1)
+def main():
+    try:
+        me = str(sys.argv[1])
+    except IndexError:
+        print('Usage: python3 chatclient.py <Username>')
+        return
 
-client_sock = socket(AF_INET, SOCK_STREAM)
-my_port = const.registry[me][1]
-client_sock.bind(('0.0.0.0', my_port))
-client_sock.listen(5)
+    client_sock = socket(AF_INET, SOCK_STREAM)
+    my_port = const.registry[me][1]
+    client_sock.bind(('0.0.0.0', my_port))
+    client_sock.listen(5)
 
-recv_handler = RecvHandler(client_sock)
-recv_handler.start()
+    recv_handler = RecvHandler(client_sock)
+    recv_handler.start()
 
-while True:
-    dest = input("ENTER DESTINATION: ")
-    msg = input("ENTER MESSAGE: ")
-
-    if dest in const.registry:
-        dest_ip, dest_port = const.registry[dest]
+    while True:
         server_sock = socket(AF_INET, SOCK_STREAM)
+        dest = input("ENTER DESTINATION: ")
+        msg = input("ENTER MESSAGE: ")
+
         try:
-            server_sock.connect((dest_ip, dest_port))
+            server_sock.connect((const.CHAT_SERVER_HOST, const.CHAT_SERVER_PORT))
         except:
-            print("Error: Server is down or destination user is not available.")
-            continue
+            print("Server is down. Exiting...")
+            exit(1)
+
         msg_pack = (msg, dest, me)
         marshaled_msg_pack = pickle.dumps(msg_pack)
         server_sock.send(marshaled_msg_pack)
+
         marshaled_reply = server_sock.recv(1024)
         reply = pickle.loads(marshaled_reply)
         if reply != "ACK":
-            print("Error: Server did not accept the message (destination user may not exist).")
+            print("Error: Server did not accept the message (dest does not exist?)")
+        else:
+            pass
         server_sock.close()
-    else:
-        print("Error: Destination user does not exist.")
+
+if __name__ == "__main__":
+    main()
